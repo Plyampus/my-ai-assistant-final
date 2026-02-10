@@ -1,0 +1,22 @@
+# Ignore virtual environment
+venv/
+
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+
+# Ignore environment variables file
+.env
+
+# Ignore local data files if they are not meant for Git
+data/
+
+# Ignore OS generated files
+.DS_Store
+Thumbs.db.next/
+.next/
+node_modules/
+node_modules/
+.next/
+backend/.env
+frontend/.env.local

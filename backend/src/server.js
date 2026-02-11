@@ -132,6 +132,11 @@ const AiService = {
   // Генерація відповіді через Google Gemini
   generateResponse: async (message, history) => {
     try {
+      if (!process.env.GOOGLE_API_KEY) {
+        console.error('❌ ПОМИЛКА: GOOGLE_API_KEY не знайдено в змінних середовища!');
+        return { text: 'Помилка налаштування: На сервері Render не додано GOOGLE_API_KEY. Зайдіть в Environment і додайте його.', mode: 'offline' };
+      }
+
       const now = new Date();
       const systemTimeInfo = `Current real-world time: ${now.toLocaleString('uk-UA')}`;
       const prompt = `System: You are a helpful AI assistant. ${systemTimeInfo}. Context: ${JSON.stringify(history)}\nUser: ${message}\nAssistant:`;
@@ -140,6 +145,7 @@ const AiService = {
       return { text: result.response.text(), mode: 'api' };
     } catch (err) {
       console.error('❌ GOOGLE API ERROR:', err.message);
+      console.error('🔍 Перевірте, чи правильний API ключ і чи не вичерпано ліміти.');
       // Якщо помилка пов'язана з ключем або квотами, ми побачимо це в логах Render
       return { text: AiService.getOfflineResponse(message), mode: 'offline' };
     }

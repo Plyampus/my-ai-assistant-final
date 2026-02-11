@@ -29,118 +29,127 @@ function getCurrentTimestamp() {
   return new Date().toISOString();
 }
 
-function loadChatHistory() {
-  if (fs.existsSync(CHAT_HISTORY_FILE)) {
-    return JSON.parse(fs.readFileSync(CHAT_HISTORY_FILE, 'utf-8'));
+// --- Вспомогательные функции для данных ---
+function loadJson(filePath, defaultValue = []) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    }
+  } catch (err) {
+    console.error(`Помилка читання ${filePath}:`, err.message);
   }
-  return [];
+  return defaultValue;
 }
 
-function saveChatHistory(history) {
-  fs.writeFileSync(CHAT_HISTORY_FILE, JSON.stringify(history, null, 2), 'utf-8');
-}
-
-function loadEvents() {
-  if (fs.existsSync(EVENTS_FILE)) {
-    return JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf-8'));
+function saveJson(filePath, data) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error(`Помилка запису ${filePath}:`, err.message);
   }
-  return {};
 }
 
-function saveEvents(events) {
-  fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2), 'utf-8');
-}
-
+// --- Логика событий (витамины, врачи и т.д.) ---
 function recordEvent(type, content, metadata = {}) {
-  const events = loadEvents();
+  const events = loadJson(EVENTS_FILE, {});
   if (!events[type]) events[type] = [];
-  const event = { id: uuidv4(), type, content, metadata, timestamp: getCurrentTimestamp() };
+  
+  const event = { 
+    id: uuidv4(), 
+    type, 
+    content, 
+    metadata, 
+    timestamp: getCurrentTimestamp() 
+  };
+  
   events[type].push(event);
-  saveEvents(events);
+  saveJson(EVENTS_FILE, events);
   return event;
-}
-
-function getEvents(type) {
-  const events = loadEvents();
-  return events[type] || [];
 }
 
 function tryAnswerEventQuery(message) {
   const lower = message.toLowerCase();
+  const events = loadJson(EVENTS_FILE, {});
+
   if (lower.includes('вітамін') || lower.includes('витамин')) {
-    const vitamins = getEvents('vitamin');
-    if (vitamins.length > 0) {
-      return `Ви приймаєте вітаміни: ${vitamins[vitamins.length - 1].content}`;
-    }
+    const list = events.vitamin;
+    return list?.length ? `Ви приймаєте вітаміни: ${list[list.length - 1].content}` : null;
   }
+  
   if (lower.includes('лікар') || lower.includes('врач')) {
-    const doctors = getEvents('doctor');
-    if (doctors.length > 0) {
-      return `Останній візит: ${doctors[doctors.length - 1].content}`;
-    }
+    const list = events.doctor;
+    return list?.length ? `Останній запис про лікаря: ${list[list.length - 1].content}` : null;
   }
+  
   return null;
 }
 
+// --- Офлайн-ответы (заглушки) ---
 function getOfflineResponse(message) {
   const lower = message.toLowerCase();
-  if (lower.includes('привіт')) return 'Привіт! 👋';
-  if (lower.includes('як дела')) return 'Спасибі, добре! 😊';
-  if (lower.includes('час')) return `Час: ${getCurrentTimestamp()}`;
-  return 'Спасибі за повідомлення! 📝';
+  const responses = {
+    'привіт': 'Привіт! Я працюю в офлайн-режимі, але готовий допомагати. 👋',
+    'як справи': 'У мене все чудово! Як я можу вам допомогти? 😊',
+    'дякую': 'Будь ласка! Звертайтеся ще. ✨',
+    'час': `Зараз ${new Date().toLocaleTimeString('uk-UA')}. 🕒`
+  };
+
+  for (const [key, val] of Object.entries(responses)) {
+    if (lower.includes(key)) return val;
+  }
+  return 'Отримав ваше повідомлення! Наразі я в офлайн-режимі (API Google недоступне). 📝';
 }
 
+// --- API Эндпоинты ---
+
+// Статус сервера
 app.get('/api/status', (req, res) => {
-  res.json({ status: 'ok', hasApiKey: !!process.env.GOOGLE_API_KEY, timestamp: getCurrentTimestamp() });
+  res.json({ 
+    status: 'online', 
+    apiKeyConfigured: !!process.env.GOOGLE_API_KEY,
+    serverTime: getCurrentTimestamp() 
+  });
 });
 
+// История чата
 app.get('/api/chat-history', (req, res) => {
-  res.json({ history: loadChatHistory() });
+  res.json({ history: loadJson(CHAT_HISTORY_FILE) });
 });
 
+// Основной чат
 app.post('/api/chat', async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'Повідомлення обов’язкове' });
+
+  let history = loadJson(CHAT_HISTORY_FILE).slice(-15); // Ограничиваем контекст для скорости
+  
+  // 1. Проверяем локальные события
+  const eventAnswer = tryAnswerEventQuery(message);
+  if (eventAnswer) {
+    const aiMsg = { role: 'assistant', content: eventAnswer, timestamp: getCurrentTimestamp() };
+    const newHistory = [...history, { role: 'user', content: message, timestamp: getCurrentTimestamp() }, aiMsg];
+    saveJson(CHAT_HISTORY_FILE, newHistory);
+    return res.json({ response: eventAnswer, mode: 'memory' });
+  }
+
+  // 2. Пробуем Google AI
   try {
-    const { message } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message required' });
+    const prompt = `System: You are a helpful assistant. Context: ${JSON.stringify(history)}\nUser: ${message}\nAssistant:`;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-    let history = loadChatHistory().slice(-20);
+    const updatedHistory = [
+      ...history, 
+      { role: 'user', content: message, timestamp: getCurrentTimestamp() },
+      { role: 'assistant', content: text, timestamp: getCurrentTimestamp() }
+    ];
+    saveJson(CHAT_HISTORY_FILE, updatedHistory);
     
-    const eventAnswer = tryAnswerEventQuery(message);
-    if (eventAnswer) {
-      history.push({ role: 'user', content: message, timestamp: getCurrentTimestamp() });
-      history.push({ role: 'assistant', content: eventAnswer, timestamp: getCurrentTimestamp() });
-      saveChatHistory(history);
-      return res.json({ response: eventAnswer, history, mode: 'event' });
-    }
-
-    try {
-      const systemPrompt = `You are a helpful AI assistant. Time: ${getCurrentTimestamp()}`;
-      let fullPrompt = systemPrompt + '\n';
-      history.forEach(msg => {
-        fullPrompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
-      });
-      fullPrompt += `User: ${message}\nAssistant:`;
-
-      const result = await model.generateContent(fullPrompt);
-      const assistantMessage = result.response.text();
-      
-      history.push({ role: 'user', content: message, timestamp: getCurrentTimestamp() });
-      history.push({ role: 'assistant', content: assistantMessage, timestamp: getCurrentTimestamp() });
-      saveChatHistory(history);
-      
-      return res.json({ response: assistantMessage, history, mode: 'api' });
-    } catch (apiError) {
-      console.warn('API Error, using offline mode:', apiError.message);
-      const offlineResponse = getOfflineResponse(message);
-      
-      history.push({ role: 'user', content: message });
-      history.push({ role: 'assistant', content: offlineResponse });
-      saveChatHistory(history);
-      
-      return res.json({ response: offlineResponse, history, mode: 'offline', warning: 'API unavailable' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ response: text, mode: 'api' });
+  } catch (err) {
+    console.error('API Error:', err.message);
+    const fallback = getOfflineResponse(message);
+    res.json({ response: fallback, mode: 'offline' });
   }
 });
 

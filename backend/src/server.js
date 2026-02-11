@@ -6,7 +6,7 @@ const cors = require('cors');
 // dotenv: завантажує секретні ключі з файлу .env
 require('dotenv').config();
 // Google AI: бібліотека для роботи з Gemini
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+// const { GoogleGenerativeAI } = require('@google/generative-ai'); // Вимкнено для Ollama
 // uuid: генерує унікальні ID для подій
 const { v4: uuidv4 } = require('uuid');
 // fs & path: вбудовані модулі Node.js для роботи з файлами
@@ -21,8 +21,10 @@ app.use(express.json()); // Дозволяємо серверу розуміти
 const PORT = process.env.PORT || 5000;
 
 // --- НАЛАШТУВАННЯ AI ---
-const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-pro' });
+// const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+// const model = genai.getGenerativeModel({ model: 'gemini-pro' });
+const OLLAMA_URL = 'http://127.0.0.1:11434/api/generate';
+const OLLAMA_MODEL = 'llama3'; // Переконайтеся, що ви запустили `ollama pull llama3`
 
 // --- ФАЙЛОВА СИСТЕМА (БАЗА ДАНИХ) ---
 // Визначаємо шляхи до файлів, де будуть зберігатися дані
@@ -132,28 +134,37 @@ const AiService = {
   // Генерація відповіді через Google Gemini
   generateResponse: async (message, history) => {
     try {
-      if (!process.env.GOOGLE_API_KEY) {
-        console.error('❌ ПОМИЛКА: GOOGLE_API_KEY не знайдено в змінних середовища!');
-        return { text: 'Помилка налаштування: На сервері Render не додано GOOGLE_API_KEY. Зайдіть в Environment і додайте його.', mode: 'offline' };
-      }
-
       const now = new Date();
       const systemTimeInfo = `Current real-world time: ${now.toLocaleString('uk-UA')}`;
-      const prompt = `System: You are a helpful AI assistant. ${systemTimeInfo}. Context: ${JSON.stringify(history)}\nUser: ${message}\nAssistant:`;
       
-      const result = await model.generateContent(prompt);
-      return { text: result.response.text(), mode: 'api' };
-    } catch (err) {
-      console.error('❌ GOOGLE API ERROR:', err.message);
-      console.error('🔍 Перевірте, чи правильний API ключ і чи не вичерпано ліміти.');
-      
-      let userMessage = err.message;
-      if (userMessage.includes('429')) {
-        userMessage = '⏳ Вичерпано ліміт безкоштовних запитів Google API. Будь ласка, зачекайте хвилину або спробуйте пізніше.';
-      }
+      // Формуємо промпт для Ollama (оптимізовано для Llama 3)
+      const contextStr = history.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+      const prompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-      // Повертаємо текст помилки прямо в чат, щоб ви могли її побачити і зрозуміти причину
-      const errorMsg = `⚠️ [CRITICAL ERROR]: ${userMessage}`;
+You are a helpful AI assistant. You must always answer in Ukrainian, unless the user explicitly asks for another language. ${systemTimeInfo}.
+Use the following conversation history for context:
+${contextStr}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+${message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>`;
+      
+      // Запит до локальної Ollama
+      const response = await fetch(OLLAMA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: OLLAMA_MODEL,
+          prompt: prompt,
+          stream: false
+        })
+      });
+
+      if (!response.ok) throw new Error(`Ollama connection error: ${response.statusText}`);
+      const data = await response.json();
+      
+      return { text: data.response, mode: 'local-ollama' };
+    } catch (err) {
+      console.error('❌ OLLAMA ERROR:', err.message);
+      const errorMsg = `⚠️ [LOCAL AI ERROR]: Не можу підключитися до Ollama. Переконайтеся, що програма запущена.`;
       const offlineMsg = AiService.getOfflineResponse(message);
       return { text: `${errorMsg}\n\n${offlineMsg}`, mode: 'offline' };
     }
@@ -223,5 +234,5 @@ app.get('/api/events/:type', (req, res) => {
 // Запуск сервера
 app.listen(PORT, () => {
   console.log(`✅ AI Assistant Backend на http://localhost:${PORT}`);
-  console.log(`🔑 Google API: ${process.env.GOOGLE_API_KEY ? '✓' : '✗'}`);
+  console.log(`🦙 Local Ollama Mode: Active`);
 });

@@ -12,7 +12,7 @@
 +-----------+          +-----------+
                             |
                             v
-                       Google Gemini API
+                       Local Ollama (Llama 3)
                        + Local Memory (JSON)
 ```
 

@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 5000;
 
 // --- НАЛАШТУВАННЯ AI ---
 const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const model = genai.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 // --- ФАЙЛОВА СИСТЕМА (БАЗА ДАНИХ) ---
 // Визначаємо шляхи до файлів, де будуть зберігатися дані
@@ -146,8 +146,11 @@ const AiService = {
     } catch (err) {
       console.error('❌ GOOGLE API ERROR:', err.message);
       console.error('🔍 Перевірте, чи правильний API ключ і чи не вичерпано ліміти.');
-      // Якщо помилка пов'язана з ключем або квотами, ми побачимо це в логах Render
-      return { text: AiService.getOfflineResponse(message), mode: 'offline' };
+      
+      // Повертаємо текст помилки прямо в чат, щоб ви могли її побачити і зрозуміти причину
+      const errorMsg = `[Системна помилка: ${err.message}]`;
+      const offlineMsg = AiService.getOfflineResponse(message);
+      return { text: `${errorMsg}\n\n${offlineMsg}`, mode: 'offline' };
     }
   }
 };

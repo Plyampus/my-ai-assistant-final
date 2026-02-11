@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 5000;
 
 // --- НАЛАШТУВАННЯ AI ---
 const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-flash-latest' }, { apiVersion: 'v1beta' });
+const model = genai.getGenerativeModel({ model: 'gemini-2.0-flash-lite-001' }, { apiVersion: 'v1beta' });
 
 // --- ФАЙЛОВА СИСТЕМА (БАЗА ДАНИХ) ---
 // Визначаємо шляхи до файлів, де будуть зберігатися дані
@@ -147,8 +147,13 @@ const AiService = {
       console.error('❌ GOOGLE API ERROR:', err.message);
       console.error('🔍 Перевірте, чи правильний API ключ і чи не вичерпано ліміти.');
       
+      let userMessage = err.message;
+      if (userMessage.includes('429')) {
+        userMessage = '⏳ Вичерпано ліміт безкоштовних запитів Google API. Будь ласка, зачекайте хвилину або спробуйте пізніше.';
+      }
+
       // Повертаємо текст помилки прямо в чат, щоб ви могли її побачити і зрозуміти причину
-      const errorMsg = `⚠️ [CRITICAL ERROR]: ${err.message}`;
+      const errorMsg = `⚠️ [CRITICAL ERROR]: ${userMessage}`;
       const offlineMsg = AiService.getOfflineResponse(message);
       return { text: `${errorMsg}\n\n${offlineMsg}`, mode: 'offline' };
     }

@@ -1,90 +1,106 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-
-// Налаштування URL бекенду
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-console.log('🔗 Connecting to Backend at:', API_URL);
+import { useState, useEffect, useRef } from "react";
+import { ChatService } from "./services/api";
 
 export default function ChatPage() {
+  // --- СТАН (STATE) ---
+  // Це "пам'ять" компонента. Коли ці змінні змінюються, React оновлює екран.
   const [history, setHistory] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const historyEndRef = useRef(null);
 
-  // Автоматична прокрутка до останнього повідомлення
+  // --- ЕФЕКТИ (EFFECTS) ---
+  // useEffect виконує код після того, як React оновив екран.
+
+  // 1. Авто-скрол вниз при додаванні нового повідомлення
   const scrollToBottom = () => {
-    historyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    historyEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [history]);
 
-  // Завантаження історії при старті
+  // 2. Завантаження історії чату при першому відкритті сторінки
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/chat-history`);
-        setHistory(res.data.history || []);
+        const data = await ChatService.getHistory();
+        setHistory(data);
       } catch (err) {
-        console.error('Помилка завантаження історії:', err);
+        console.error("Помилка завантаження історії:", err);
       }
     };
     fetchHistory();
   }, []);
 
+  // --- ОБРОБНИКИ ПОДІЙ (HANDLERS) ---
+  // Функція, яка викликається при натисканні Enter або кнопки Send
   const sendMessage = async (e) => {
     if (e) e.preventDefault();
     if (!input.trim() || loading) return;
 
-    const userMsg = { role: 'user', content: input, timestamp: new Date().toISOString() };
-    setHistory(prev => [...prev, userMsg]);
-    setInput('');
+    const userMsg = {
+      role: "user",
+      content: input,
+      timestamp: new Date().toISOString(),
+    };
+    setHistory((prev) => [...prev, userMsg]);
+    setInput("");
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_URL}/api/chat`, { message: input });
-      const aiMsg = { 
-        role: 'assistant', 
-        content: res.data.response,
-        mode: res.data.mode // 'api', 'memory' або 'offline'
+      const data = await ChatService.sendMessage(input);
+      const aiMsg = {
+        role: "assistant",
+        content: data.response,
+        mode: data.mode, // 'api', 'memory' або 'offline'
       };
-      setHistory(prev => [...prev, aiMsg]);
+      setHistory((prev) => [...prev, aiMsg]);
     } catch (err) {
-      console.error('Помилка відправки:', err);
-      setHistory(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Помилка зв’язку з сервером. Перевірте, чи бекенд працює.' 
-      }]);
+      console.error("Помилка відправки:", err);
+      setHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Помилка зв’язку з сервером. Перевірте, чи бекенд працює.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
+  // --- ВІДОБРАЖЕННЯ (RENDER) ---
+  // Те, що бачить користувач (HTML + дані)
   return (
     <div className="chat-container">
-      <header className="chat-header">
-        🤖 AI Assistant
-      </header>
+      <header className="chat-header">🤖 AI Assistant</header>
 
       <main className="chat-history">
         {history.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>
+          <div
+            style={{ textAlign: "center", color: "#888", marginTop: "20px" }}
+          >
             Почніть чат першим повідомленням!
           </div>
         ) : (
           history.map((msg, idx) => (
             <div key={idx} className={`message ${msg.role}`}>
               <div className="message-content">{msg.content}</div>
-              {msg.mode === 'offline' && <small style={{ opacity: 0.5 }}> (offline mode)</small>}
+              {msg.mode === "offline" && (
+                <small style={{ opacity: 0.5 }}> (offline mode)</small>
+              )}
             </div>
           ))
         )}
         {loading && (
           <div className="loading assistant">
-            <span></span><span></span><span></span>
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
         )}
         <div ref={historyEndRef} />
@@ -100,7 +116,7 @@ export default function ChatPage() {
           autoFocus
         />
         <button type="submit" disabled={loading || !input.trim()}>
-          {loading ? '...' : 'Send'}
+          {loading ? "..." : "Send"}
         </button>
       </form>
     </div>

@@ -1,0 +1,26 @@
+# Залежності (їх не треба в гіт, бо вони ставляться через npm install)
+node_modules/
+
+# Next.js білд
+.next/
+out/
+build/
+
+# Секретні ключі (НІКОЛИ не заливайте це в гіт!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Логи та системні файли
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+
+# Папка з даними (якщо ви хочете, щоб історія чату була тільки локальною)
+# backend/data/
+
+# IDE
+.vscode/

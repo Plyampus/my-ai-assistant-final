@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChatService } from "./services/api";
+import ChatService from "./services/api";
 
 export default function ChatPage() {
   // --- СТАН (STATE) ---

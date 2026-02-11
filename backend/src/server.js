@@ -12,7 +12,6 @@ const { v4: uuidv4 } = require('uuid');
 // fs & path: вбудовані модулі Node.js для роботи з файлами
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 
 // --- НАЛАШТУВАННЯ СЕРВЕРА ---
 const app = express();
@@ -23,7 +22,7 @@ const PORT = process.env.PORT || 5000;
 
 // --- НАЛАШТУВАННЯ AI ---
 const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-1.5-flash' }, { apiVersion: 'v1beta' });
+const model = genai.getGenerativeModel({ model: 'gemini-2.0-flash' }, { apiVersion: 'v1beta' });
 
 // --- ФАЙЛОВА СИСТЕМА (БАЗА ДАНИХ) ---
 // Визначаємо шляхи до файлів, де будуть зберігатися дані
@@ -148,27 +147,8 @@ const AiService = {
       console.error('❌ GOOGLE API ERROR:', err.message);
       console.error('🔍 Перевірте, чи правильний API ключ і чи не вичерпано ліміти.');
       
-      // Спроба отримати список доступних моделей для діагностики
-      let availableModels = "Не вдалося отримати список.";
-      try {
-        const listData = await new Promise((resolve, reject) => {
-          https.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GOOGLE_API_KEY}`, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => resolve(data));
-            res.on('error', e => reject(e));
-          }).on('error', e => reject(e));
-        });
-        const parsed = JSON.parse(listData);
-        if (parsed.models) {
-          availableModels = parsed.models.map(m => m.name.replace('models/', '')).join(', ');
-        }
-      } catch (e) { console.error('List models error:', e); }
-
-      // Повертаємо текст помилки прямо в чат, щоб ви могли її побачити і зрозуміти причину
-      const errorMsg = `⚠️ [CRITICAL ERROR]: ${err.message}\n\n📋 ДОСТУПНІ МОДЕЛІ:\n${availableModels}`;
-      const offlineMsg = AiService.getOfflineResponse(message);
-      return { text: `${errorMsg}\n\n${offlineMsg}`, mode: 'offline' };
+      // Повертаємо офлайн відповідь, але в консолі сервера помилка залишиться для налагодження
+      return { text: AiService.getOfflineResponse(message), mode: 'offline' };
     }
   }
 };

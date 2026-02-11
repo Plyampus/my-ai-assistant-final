@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 5000;
 
 // --- НАЛАШТУВАННЯ AI ---
 const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+const model = genai.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 // --- ФАЙЛОВА СИСТЕМА (БАЗА ДАНИХ) ---
 // Визначаємо шляхи до файлів, де будуть зберігатися дані

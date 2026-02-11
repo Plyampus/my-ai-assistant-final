@@ -139,7 +139,8 @@ const AiService = {
       const result = await model.generateContent(prompt);
       return { text: result.response.text(), mode: 'api' };
     } catch (err) {
-      console.error('API Error:', err.message);
+      console.error('❌ GOOGLE API ERROR:', err.message);
+      // Якщо помилка пов'язана з ключем або квотами, ми побачимо це в логах Render
       return { text: AiService.getOfflineResponse(message), mode: 'offline' };
     }
   }

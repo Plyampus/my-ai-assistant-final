@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 5000;
 
 // --- НАЛАШТУВАННЯ AI ---
 const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const model = genai.getGenerativeModel({ model: 'gemini-pro' });
 
 // --- ФАЙЛОВА СИСТЕМА (БАЗА ДАНИХ) ---
 // Визначаємо шляхи до файлів, де будуть зберігатися дані
@@ -126,7 +126,7 @@ const AiService = {
     for (const [key, val] of Object.entries(responses)) {
       if (lower.includes(key)) return val;
     }
-    return 'Отримав ваше повідомлення! Наразі я в офлайн-режимі (API Google недоступне). 📝 (DEBUG MODE)';
+    return 'Отримав ваше повідомлення! Наразі я в офлайн-режимі (API Google недоступне). 📝';
   },
 
   // Генерація відповіді через Google Gemini

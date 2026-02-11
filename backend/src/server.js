@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 
 // Google API
 const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+const model = genai.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 // Data files
 const DATA_DIR = path.join(__dirname, '../data');

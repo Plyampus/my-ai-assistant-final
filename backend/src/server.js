@@ -126,7 +126,7 @@ const AiService = {
     for (const [key, val] of Object.entries(responses)) {
       if (lower.includes(key)) return val;
     }
-    return 'Отримав ваше повідомлення! Наразі я в офлайн-режимі (API Google недоступне). 📝';
+    return 'Отримав ваше повідомлення! Наразі я в офлайн-режимі (API Google недоступне). 📝 (DEBUG MODE)';
   },
 
   // Генерація відповіді через Google Gemini
@@ -148,7 +148,7 @@ const AiService = {
       console.error('🔍 Перевірте, чи правильний API ключ і чи не вичерпано ліміти.');
       
       // Повертаємо текст помилки прямо в чат, щоб ви могли її побачити і зрозуміти причину
-      const errorMsg = `[Системна помилка: ${err.message}]`;
+      const errorMsg = `⚠️ [CRITICAL ERROR]: ${err.message}`;
       const offlineMsg = AiService.getOfflineResponse(message);
       return { text: `${errorMsg}\n\n${offlineMsg}`, mode: 'offline' };
     }

@@ -5,6 +5,7 @@ import axios from 'axios';
 
 // Налаштування URL бекенду
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+console.log('🔗 Connecting to Backend at:', API_URL);
 
 export default function ChatPage() {
   const [history, setHistory] = useState([]);

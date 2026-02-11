@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 
 // Google API
 const genai = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genai.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const model = genai.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
 // Data files
 const DATA_DIR = path.join(__dirname, '../data');
@@ -134,7 +134,9 @@ app.post('/api/chat', async (req, res) => {
 
   // 2. Пробуем Google AI
   try {
-    const prompt = `System: You are a helpful assistant. Context: ${JSON.stringify(history)}\nUser: ${message}\nAssistant:`;
+    const now = new Date();
+    const systemTimeInfo = `Current real-world time: ${now.toLocaleString('uk-UA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false })}`;
+    const prompt = `System: You are a helpful AI assistant. ${systemTimeInfo}. Context: ${JSON.stringify(history)}\nUser: ${message}\nAssistant:`;
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 

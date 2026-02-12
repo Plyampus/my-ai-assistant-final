@@ -12,6 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 // fs & path: вбудовані модулі Node.js для роботи з файлами
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 // --- НАЛАШТУВАННЯ СЕРВЕРА ---
 const app = express();
@@ -233,6 +234,21 @@ app.get('/api/events/:type', (req, res) => {
 
 // Запуск сервера
 app.listen(PORT, () => {
-  console.log(`✅ AI Assistant Backend на http://localhost:${PORT}`);
+  // Функція для пошуку IP адреси комп'ютера в мережі
+  const getLocalIp = () => {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+    return 'localhost';
+  };
+
+  console.log(`✅ AI Assistant Backend запущено!`);
+  console.log(`💻 Local:   http://localhost:${PORT}`);
+  console.log(`📱 Network: http://${getLocalIp()}:${PORT} (використовуйте цей IP у chatService.js)`);
   console.log(`🦙 Local Ollama Mode: Active`);
 });

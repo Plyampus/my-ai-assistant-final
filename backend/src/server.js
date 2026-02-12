@@ -233,7 +233,7 @@ app.get('/api/events/:type', (req, res) => {
 });
 
 // Запуск сервера
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   // Функція для пошуку IP адреси комп'ютера в мережі
   const getLocalIp = () => {
     const interfaces = os.networkInterfaces();

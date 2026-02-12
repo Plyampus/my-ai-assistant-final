@@ -23,11 +23,19 @@ const ChatService = {
 
   // Відправити нове повідомлення
   sendMessage: async (message) => {
-    const res = await api.post('/api/chat', { message });
-    return {
-      response: res.data.response,
-      mode: res.data.mode
-    };
+    try {
+      const res = await api.post('/api/chat', { message });
+      return {
+        response: res.data.response,
+        mode: res.data.mode
+      };
+    } catch (error) {
+      console.error('Connection Error:', error);
+      return {
+        response: `⚠️ Помилка з'єднання! Перевірте, чи запущено сервер на комп'ютері та чи правильна IP-адреса (${API_URL}). Можливо, блокує Windows Firewall.`,
+        mode: 'offline'
+      };
+    }
   }
 };
 
